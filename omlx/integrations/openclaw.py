@@ -45,6 +45,7 @@ class OpenClawIntegration(Integration):
         model: str,
         host: str = "127.0.0.1",
         tools_profile: str = "coding",
+        image_model: str | None = None,
     ) -> None:
         def updater(config: dict) -> None:
             config.setdefault("models", {}).setdefault("providers", {})
@@ -53,8 +54,9 @@ class OpenClawIntegration(Integration):
                 "apiKey": api_key or "omlx",
                 "api": "openai-completions",
             }
+            models_list: list[dict] = []
             if model:
-                provider_config["models"] = [
+                models_list.append(
                     {
                         "id": model,
                         "name": model,
@@ -70,7 +72,27 @@ class OpenClawIntegration(Integration):
                         "contextWindow": 131072,
                         "maxTokens": 8192,
                     }
-                ]
+                )
+            if image_model and image_model != model:
+                models_list.append(
+                    {
+                        "id": image_model,
+                        "name": image_model,
+                        "api": "openai-completions",
+                        "reasoning": False,
+                        "input": ["text", "image"],
+                        "cost": {
+                            "input": 0,
+                            "output": 0,
+                            "cacheRead": 0,
+                            "cacheWrite": 0,
+                        },
+                        "contextWindow": 131072,
+                        "maxTokens": 8192,
+                    }
+                )
+            if models_list:
+                provider_config["models"] = models_list
             config["models"]["providers"]["omlx"] = provider_config
 
             # Set as default model
@@ -79,6 +101,15 @@ class OpenClawIntegration(Integration):
                     "defaults", {}
                 ).setdefault("model", {})
                 config["agents"]["defaults"]["model"]["primary"] = f"omlx/{model}"
+
+            # Set image model for auto-switch when primary cannot accept images
+            if image_model:
+                config.setdefault("agents", {}).setdefault(
+                    "defaults", {}
+                ).setdefault("imageModel", {})
+                config["agents"]["defaults"]["imageModel"]["primary"] = (
+                    f"omlx/{image_model}"
+                )
 
             # Set tools profile
             config.setdefault("tools", {})
@@ -159,9 +190,17 @@ class OpenClawIntegration(Integration):
         model: str,
         host: str = "127.0.0.1",
         tools_profile: str = "coding",
+        image_model: str | None = None,
         **kwargs,
     ) -> None:
-        self.configure(port, api_key, model, host=host, tools_profile=tools_profile)
+        self.configure(
+            port,
+            api_key,
+            model,
+            host=host,
+            tools_profile=tools_profile,
+            image_model=image_model,
+        )
         self.configure_exec_approvals(tools_profile)
 
         env = os.environ.copy()
@@ -188,7 +227,14 @@ class OpenClawIntegration(Integration):
                 env=env,
             )
             # Onboarding overwrites config, re-apply
-            self.configure(port, api_key, model, host=host, tools_profile=tools_profile)
+            self.configure(
+                port,
+                api_key,
+                model,
+                host=host,
+                tools_profile=tools_profile,
+                image_model=image_model,
+            )
             self.configure_exec_approvals(tools_profile)
 
         _, gw_port = self._gateway_info()
