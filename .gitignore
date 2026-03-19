@@ -55,6 +55,7 @@ cover/
 
 # Environments
 .env
+omlx.env
 .venv
 env/
 venv/
