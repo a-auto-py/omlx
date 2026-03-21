@@ -124,6 +124,23 @@ def _extract_multimodal_content_list(content: list) -> list:
     return parts
 
 
+def messages_contain_image_parts(messages: List[Message]) -> bool:
+    """Return True when any message content contains image-like parts."""
+    image_types = {"image_url", "input_image", "image"}
+    for msg in messages:
+        content = getattr(msg, "content", None)
+        if not isinstance(content, list):
+            continue
+        for item in content:
+            if hasattr(item, "model_dump"):
+                item = item.model_dump()
+            elif hasattr(item, "dict"):
+                item = item.dict()
+            if isinstance(item, dict) and item.get("type") in image_types:
+                return True
+    return False
+
+
 # Roles eligible for merging when consecutive.
 # System and tool messages are excluded: system messages have distinct semantics
 # (e.g., JSON schema instructions), and tool messages carry tool_call_id.

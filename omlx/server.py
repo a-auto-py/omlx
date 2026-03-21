@@ -149,7 +149,7 @@ from .api.tool_calling import (
     sanitize_tool_call_markup,
 )
 from .api.thinking import ThinkingParser, extract_thinking
-from .api.utils import clean_output_text, clean_special_tokens, extract_harmony_messages, extract_multimodal_content, extract_text_content
+from .api.utils import clean_output_text, clean_special_tokens, extract_harmony_messages, extract_multimodal_content, extract_text_content, messages_contain_image_parts
 from .engine import BaseEngine, BatchedEngine, VLMBatchedEngine
 from .engine.embedding import EmbeddingEngine
 from .engine.reranker import RerankerEngine
@@ -1651,6 +1651,15 @@ async def create_chat_completion(
 
     # Extract messages - different engines need different content handling
     is_vlm = isinstance(engine, VLMBatchedEngine)
+    has_images = messages_contain_image_parts(request.messages)
+    if has_images and not is_vlm:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Model '{request.model}' does not support image input. "
+                "Use a vision-capable model (e.g. Qwen2.5-VL, Llava)."
+            ),
+        )
     if engine.model_type == "gpt_oss":
         messages = extract_harmony_messages(
             request.messages, max_tool_result_tokens, engine.tokenizer
