@@ -23,7 +23,8 @@ start() {
   fi
 
   echo "启动 oMLX (model-dir=$MODEL_DIR, log=$LOG_DIR/server.log)..."
-  nohup .venv/bin/omlx serve --model-dir "$MODEL_DIR" >> "$LOG_DIR/server.log" 2>&1 &
+  # 添加 --host 0.0.0.0 以允许局域网访问，添加 --port 指定端口（如有必要）
+  nohup .venv/bin/omlx serve --host 0.0.0.0 --port 8000 --model-dir "$MODEL_DIR" >> "$LOG_DIR/server.log" 2>&1 &
   echo $! > "$PID_FILE"
   echo "oMLX 已启动 (PID $(cat "$PID_FILE"))"
   echo "  服务: http://127.0.0.1:8000"
